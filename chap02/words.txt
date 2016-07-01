@@ -1,0 +1,23 @@
+============================================================
+chap 02
+============================================================
+//
+<<
+c++
+comment
+compiler
+compile error
+cout
+executable program
+function
+header
+IDE
+#include
+library
+linker
+main()
+object code
+output
+program
+source code
+sentence
