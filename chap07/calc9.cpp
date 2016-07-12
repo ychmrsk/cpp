@@ -157,6 +157,7 @@ double expression();
 double term();
 double primary();
 double statement();
+double define_name(string var, double val);
 
 Token_stream ts;
 
@@ -202,6 +203,9 @@ void calculate()
 int main()
 {
   try {
+    define_name("pi", 3.1415926535);
+    define_name("e", 2.7182818284);
+    
     calculate();
     return 0;
   } catch (exception& e) {
