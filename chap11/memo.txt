@@ -1,0 +1,65 @@
+output manipulator
+  oct
+  dec
+  hex
+  showbase
+  noshowbase
+
+cin.unsetf(ios::dec)
+cin.unsetf(ios::oct)
+cin.unsetf(ios::hex)
+
+1234
+02322
+0x4d2
+
+iostream manipulator
+  fixed
+  scientific
+
+  general
+  => inline ios_base& general(ios_base& b)
+     {
+       b.setf(ios_base::fmtflags(0), ios_base::floatfield);
+       return b
+     }
+
+
+  setprecision()
+  setw()
+
+
+open mode of file stream
+  ios_base::app      append
+  ios_base::ate      at end
+  ios_base::binary   binary mode
+  ios_base::in       read
+  ios_base::out      write
+  ios_base::trunc    turncate
+
+ofstream of1(name1);  // ios_base::out by default
+ifstream if1(name2);  // ios_base::in  by default
+
+ofstream ofs(name, ios_base::app);
+fstream fs("myfile", ios_base::in|ios_base::out);
+
+fstream fs(name.c_str());
+fs.seekg(5);  // seek get
+fs.seekp(1);  // seek put
+
+
+character
+  isspace(c)
+  isalpha(c)
+  isdigit(c)
+  isxdigit(c) : 0-9A-Fa-f
+  isupper(c)
+  islower(c)
+  isalnum(c)
+  iscntrl(c)
+  ispunct(c)
+  isprint(c)
+  isgraph(c) : alpha digit punct
+  toupper(c)
+  tolower(c)
+
