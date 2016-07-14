@@ -1,0 +1,398 @@
+@Point.h
+
+struct Point {
+  int x, y;
+  Point(int xx, int yy) : x(xx), y(yy) { }
+  Point() : x(0), y(0) { }
+};
+
+bool operator==(Point a, Point b) { return a.x==b.x && a.y==b.y; }
+bool operator!=(Point a, Point b) { return !(a==b); }
+
+@ Graph.h
+
+struct Line : Shape {
+  Line(Point p1, Point p2);
+};
+
+Line::Line(Point p1, Point p2)
+{
+    add(p1);  // see class Shape
+    add(p2);
+}
+
+struct Lines : Shape {
+  void draw_lines() const;
+  void add(Point p1, Point p2);  // add a line defined by two points
+};
+
+void Lines::add(Point p1, Point p2)
+{
+  Shape::add(p1);
+  Shape::add(p2);
+}
+
+void Lines::draw_lines() const
+{
+  if (color().visibility())
+    for (int i=1; i<number_of_points(); i+=2)
+      fl_line(point(i-1).x, point(i-1).y, point(i).x, point(i).y);
+}
+
+
+struct Color {
+  enum Color_type {  // hide FLTK Color type (Fl_Color)
+    red = FL_RED,
+    blue = FL_BLUE,
+    green = FL_GREEN,
+    yellow = FL_YELLOW,
+    white = FL_WHITE,
+    black = FL_BLACK,
+    magenta = FL_MAGENTA,
+    cyan = FL_CYAN,
+    dark_red = FL_DARK_RED,
+    dark_green = FL_DARK_GREEN,
+    dark_yellow = FL_DARK_YELLOW,
+    dark_blue = FL_DARK_BLUE,
+    dark_magenta = FL_DARK_MAGENTA,
+    dark_cyan = FL_DARK_CYAN
+  };
+
+  enum Transparency { invisible=0, visible=255 };
+
+  Color(Color_type cc) : c(Fl_Color(cc)), v(visible) { }
+  Color(Color_type cc, Transparency vv) : c(Fl_Color(cc)), v(vv) { }
+  Color(int cc) : c(Fl_Color(cc)), v(visible) { }
+  Color(Transparency vv) : c(Fl_Color()), v(vv) { }  // default color
+
+  int as_int() const { return c; }
+
+  char visibility() const { return v; }
+  void set_visibility(Transparency vv) { v=vv; }
+
+private:
+  char v;  // visibility
+  Fl_Color c;
+};
+
+
+struct Line_style {
+  enum Line_style_type {
+    solid = FL_SOLID,
+    dash = FL_DASH,
+    dot = FL_DOT,
+    dashdot = FL_DASHDOT,
+    dashdotdot=FL_DASHDOTDOT,
+  };
+
+  Line_style(Line_style_type ss) : s(ss), w(0) { }
+  Line_style(Line_style_type lst, int ww) : s(lst), w(ww) { }
+  Line_style(int ss) : s(ss), w(0) { }
+
+  int width() const { return w; }
+  int style() const { return s; }
+
+private:
+  int s;
+  int w;
+};
+
+
+struct Open_polyline : Shape {
+  void add(Point p) { Shape::add(p); }
+};
+
+
+struct Closed_polyline : Open_polyline {
+  void draw_lines() const;
+};
+
+void Closed_polyline::draw_lines() const
+{
+  Open_polyline::draw_lines();
+  if (color().visibility())
+    fl_line(point(number_of_points()-1).x,
+            point(number_of_points()-1).y,
+            point(0).x,
+            point(0).y);
+}
+
+
+struct Polygon : Closed_polyline {
+  void add(Point p);
+  void draw_lines() const;
+};
+
+void Polygon::add(Point p)
+{
+  if (number_of_points() < 3)
+    error("less than 3 points in a Polygon");
+  // confirm any two lines are not crossing.
+  Closed_polyline::add(p);
+}
+
+
+struct Rectangle : Shape {
+  Rectangle(Point xy, int ww, int hh);
+  Rectangle(Point x, Point y);
+  void draw_lines() const;
+
+  int height() const { return h; }
+  int width() const { return w; }
+
+private:
+  int h;
+  int w;
+};
+
+Rectangle::Rectangle(Point xy,  int ww, int hh)
+  : w(ww), h(hh)
+{
+  if (h<=0 || w<=0)
+    error("Bad rectangle: non-positive side");
+  add(xy);
+}
+
+Rectangle::Rectangle(Point x, Point y)
+  : w(y.x-x.x), h(y.y-x.y)
+{
+  if (h<=0 || w<=0)
+    error("Bad rectangle: non-positive width or height");
+  add(x);
+}
+
+void Rectangle::draw_lines() const
+{
+  if (fill_color().visibility()) {
+    fl_color(fill_color().as_int());
+    fl_rectf(point(0).x, point(0).y, w, h);
+  }
+
+  if (color().visibility()) {
+    fl_color(color().as_int());
+    fl_rect(point(0).x, point(0).y, w, h);
+  }
+}
+
+
+struct Text : Shape {
+  Text(Point x, const string& s)
+    : lab(s), fnt(fl_font()), fnt_sz(fl_size())
+  { add(x); }
+
+  void draw_lines() const;
+
+  void set_label(const string& s) { lab = s; }
+  string label() const { return lab; }
+
+  void set_font(Font f) { fnt = f; }
+  Font font() const { return fnt; }
+
+  void set_font_size(int s) { fnt_sz = s; }
+  int font_size() const { return fnt_sz; }
+
+private:
+  string lab;  // label
+  Font fnt;
+  int fnt_sz;
+};
+
+void Text::draw_lines() const
+{
+  fl_draw(lab.c_str(), point(0).x, point(0).y);
+}
+
+class Font {
+public:
+  enum Font_type {
+    helvetica = FL_HELVETICA,
+    helvetica_bold = FL_HELVETICA_BOLD,
+    helvetica_italic = FL_HELVETICA_ITALIC,
+    helvetica_bold_italic = FL_HELVETICA_BOLD_ITALIC,
+    courier = FL_COURIER,
+    courier_bold = FL_COURIER_BOLD,
+    courier_italic = FL_COURIER_ITALIC,
+    courier_bold_italic = FL_COURIER_BOLD_ITALIC,
+    times_bold = FL_TIMES,
+    times_italic = FL_TIMES_ITALIC,
+    times_bold_italic = FL_TIMES_BOLD_ITALIC,
+    times = FL_TIMES,
+    symbol = FL_SYMBOL,
+    screen = FL_SCREEN,
+    screen_bold = FL_SCREEN_BOLD,
+    zapf_dingbats = ZAPF_DINGBATS,
+  };
+
+  Font(Font_type ff) : f(ff) { }
+  Font(int ff) : f(ff) { }
+
+  int as_int() const { return f; }
+
+private:
+  int f;
+};
+
+
+struct Circle : Shape {
+  Circle(Point p, int rr);
+
+  void draw_lines() const;
+
+  Point center() const;
+  int radius() const { return r; }
+  void set_radius(int rr) {
+    set_point(0, Point(center().x-rr, center().y-rr));
+    r = rr;
+  }
+
+private:
+  int r;
+};
+
+Circle::Circle(Point p, int rr)
+  : r(rr)
+{
+  add(Point(p.x-r, p.y-r));   // top left
+}
+
+Point Circle::center() const
+{
+  return Point(point(0).x+r, point(0).y+r);
+}
+
+void Circle::draw_lines() const
+{
+  if (color().visibility())
+    fl_arc(point(0).x, point(0).y, r+r, r+r, 0, 360);
+}
+
+
+struct Ellipse : Shape {
+  Ellipse(Point p, int w, int h);
+
+  void draw_lines() const;
+
+  Point center() const;
+  Point focus1() const;
+  Point focus2() const;
+
+  void set_major(int ww) {
+    set_point(0, Point(center().x-ww, center().y-h));
+    w = ww;
+  }
+  int major() const { return w; }
+  void set_minor(int hh) {
+    set_point(0, Point(center().x-w, center().y-hh));
+    h = hh;
+  }
+  int minor() const { return h; }
+
+private:
+  int w;
+  int h;
+};
+
+Point Ellipse::focus1() const
+{
+  return Point(center().x+sqrt(double(w*w-h*h)), center().y);
+}
+
+
+struct Marked_polyline : Open_polyline {
+  Marked_polyline(const string& m)
+    : mark(m)
+  { if (m=="") mark="*"; }
+
+  void draw_lines() const;
+
+private:
+  string mark;
+};
+
+void Marked_polyline::draw_lines() const
+{
+  Open_polyline::draw_lines();
+  for (int i=0; i<number_of_points(); ++i)
+    draw_mark(point(i), mark[i%mark.size()]);
+}
+
+void draw_mark(Point xy, char c)
+{
+  static const int dx = 4;
+  static const int dy = 4;
+
+  stirng m(1, c);  // string that has 1 character
+  fl_draw(m.c_str(), xy.x-dx, xy.y+dy);  // put a center of character to point
+}
+
+
+struct Marks : Marked_polyline {
+  Marks(const string& m)
+    : Marked_polyline(m)
+  {
+    set_color(Color(Color::invisible));
+  }
+};
+
+
+struct Mark : Marks {
+  Mark(Point xy, char c)
+    : Marks(string(1,c))
+  {
+    add(xy);
+  }
+};
+
+
+struct Image : Shape {
+  Image(Point xy, string file_name, Suffix::Encoding e = Suffix::none);
+  ~Image() { delete p; }
+  void draw_lines() const;
+  void set_mask(Point xy, int ww, int hh)
+  { w = ww; h = hh; cx = xy.x; cy = xy.y }
+
+private:
+  int w, h;  // define `masking-box` relative to (cx, cy)
+  int cx, cy;
+  Fl_Image* p;
+  Text fn;
+};
+
+struct Bad_image : Fl_Image {
+  Bad_image(int h, int w) : Fl_Image(h, w, 0) { }
+  void draw(int x, int y, int, int, int, int) { draw_empty(x, y); }
+};
+
+Image::Image(Point xy, string s, Suffix::Encoding e)
+  : w(0), h(0), fn(xy, "")
+{
+  add(xy);
+
+  if (!can_open(s)) {
+    fn.set_label("cannot open \"" + s + '"');
+    p = new Bad_image(30, 20);
+    return;
+  }
+
+  if (e == Suffix::none) e = get_encoding(s);
+
+  switch(e) {
+  case Suffix::jpg:
+    p = new Fl_JPEG_Image(s.c_str());
+    break;
+  case Suffix::gif:
+    p = new Fl_GIF_Image(s.c_str());
+    break;
+  default:
+    fn.set_label("unsupported file type \"" + s + '"');
+    p = new Bad_image(30, 20);
+    break;
+  }
+}
+
+bool can_open(const string& s)
+{
+  ifstream ff(s.c_str());
+  return (bool)ff;
+}
+
