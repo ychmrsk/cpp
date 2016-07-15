@@ -1,0 +1,699 @@
+@Point.h
+
+struct Point {
+  int x, y;
+  Point(int xx, int yy) : x(xx), y(yy) { }
+  Point() : x(0), y(0) { }
+};
+
+bool operator==(Point a, Point b) { return a.x==b.x && a.y==b.y; }
+bool operator!=(Point a, Point b) { return !(a==b); }
+
+@ Graph.h
+
+struct Line : Shape {
+  Line(Point p1, Point p2);
+};
+
+Line::Line(Point p1, Point p2)
+{
+    add(p1);  // see class Shape
+    add(p2);
+}
+
+struct Lines : Shape {
+  void draw_lines() const;
+  void add(Point p1, Point p2);  // add a line defined by two points
+};
+
+void Lines::add(Point p1, Point p2)
+{
+  Shape::add(p1);
+  Shape::add(p2);
+}
+
+void Lines::draw_lines() const
+{
+  if (color().visibility())
+    for (int i=1; i<number_of_points(); i+=2)
+      fl_line(point(i-1).x, point(i-1).y, point(i).x, point(i).y);
+}
+
+
+struct Color {
+  enum Color_type {  // hide FLTK Color type (Fl_Color)
+    red = FL_RED,
+    blue = FL_BLUE,
+    green = FL_GREEN,
+    yellow = FL_YELLOW,
+    white = FL_WHITE,
+    black = FL_BLACK,
+    magenta = FL_MAGENTA,
+    cyan = FL_CYAN,
+    dark_red = FL_DARK_RED,
+    dark_green = FL_DARK_GREEN,
+    dark_yellow = FL_DARK_YELLOW,
+    dark_blue = FL_DARK_BLUE,
+    dark_magenta = FL_DARK_MAGENTA,
+    dark_cyan = FL_DARK_CYAN
+  };
+
+  enum Transparency { invisible=0, visible=255 };
+
+  Color(Color_type cc) : c(Fl_Color(cc)), v(visible) { }
+  Color(Color_type cc, Transparency vv) : c(Fl_Color(cc)), v(vv) { }
+  Color(int cc) : c(Fl_Color(cc)), v(visible) { }
+  Color(Transparency vv) : c(Fl_Color()), v(vv) { }  // default color
+
+  int as_int() const { return c; }
+
+  char visibility() const { return v; }
+  void set_visibility(Transparency vv) { v=vv; }
+
+private:
+  char v;  // visibility
+  Fl_Color c;
+};
+
+
+struct Line_style {
+  enum Line_style_type {
+    solid = FL_SOLID,
+    dash = FL_DASH,
+    dot = FL_DOT,
+    dashdot = FL_DASHDOT,
+    dashdotdot=FL_DASHDOTDOT,
+  };
+
+  Line_style(Line_style_type ss) : s(ss), w(0) { }
+  Line_style(Line_style_type lst, int ww) : s(lst), w(ww) { }
+  Line_style(int ss) : s(ss), w(0) { }
+
+  int width() const { return w; }
+  int style() const { return s; }
+
+private:
+  int s;
+  int w;
+};
+
+
+struct Open_polyline : Shape {
+  void add(Point p) { Shape::add(p); }
+};
+
+
+struct Closed_polyline : Open_polyline {
+  void draw_lines() const;
+};
+
+void Closed_polyline::draw_lines() const
+{
+  Open_polyline::draw_lines();
+  if (color().visibility())
+    fl_line(point(number_of_points()-1).x,
+            point(number_of_points()-1).y,
+            point(0).x,
+            point(0).y);
+}
+
+
+struct Polygon : Closed_polyline {
+  void add(Point p);
+  void draw_lines() const;
+};
+
+void Polygon::add(Point p)
+{
+  if (number_of_points() < 3)
+    error("less than 3 points in a Polygon");
+  // confirm any two lines are not crossing.
+  Closed_polyline::add(p);
+}
+
+
+struct Rectangle : Shape {
+  Rectangle(Point xy, int ww, int hh);
+  Rectangle(Point x, Point y);
+  void draw_lines() const;
+
+  int height() const { return h; }
+  int width() const { return w; }
+
+private:
+  int h;
+  int w;
+};
+
+Rectangle::Rectangle(Point xy,  int ww, int hh)
+  : w(ww), h(hh)
+{
+  if (h<=0 || w<=0)
+    error("Bad rectangle: non-positive side");
+  add(xy);
+}
+
+Rectangle::Rectangle(Point x, Point y)
+  : w(y.x-x.x), h(y.y-x.y)
+{
+  if (h<=0 || w<=0)
+    error("Bad rectangle: non-positive width or height");
+  add(x);
+}
+
+void Rectangle::draw_lines() const
+{
+  if (fill_color().visibility()) {
+    fl_color(fill_color().as_int());
+    fl_rectf(point(0).x, point(0).y, w, h);
+  }
+
+  if (color().visibility()) {
+    fl_color(color().as_int());
+    fl_rect(point(0).x, point(0).y, w, h);
+  }
+}
+
+
+struct Text : Shape {
+  Text(Point x, const string& s)
+    : lab(s), fnt(fl_font()), fnt_sz(fl_size())
+  { add(x); }
+
+  void draw_lines() const;
+
+  void set_label(const string& s) { lab = s; }
+  string label() const { return lab; }
+
+  void set_font(Font f) { fnt = f; }
+  Font font() const { return fnt; }
+
+  void set_font_size(int s) { fnt_sz = s; }
+  int font_size() const { return fnt_sz; }
+
+private:
+  string lab;  // label
+  Font fnt;
+  int fnt_sz;
+};
+
+void Text::draw_lines() const
+{
+  fl_draw(lab.c_str(), point(0).x, point(0).y);
+}
+
+class Font {
+public:
+  enum Font_type {
+    helvetica = FL_HELVETICA,
+    helvetica_bold = FL_HELVETICA_BOLD,
+    helvetica_italic = FL_HELVETICA_ITALIC,
+    helvetica_bold_italic = FL_HELVETICA_BOLD_ITALIC,
+    courier = FL_COURIER,
+    courier_bold = FL_COURIER_BOLD,
+    courier_italic = FL_COURIER_ITALIC,
+    courier_bold_italic = FL_COURIER_BOLD_ITALIC,
+    times_bold = FL_TIMES,
+    times_italic = FL_TIMES_ITALIC,
+    times_bold_italic = FL_TIMES_BOLD_ITALIC,
+    times = FL_TIMES,
+    symbol = FL_SYMBOL,
+    screen = FL_SCREEN,
+    screen_bold = FL_SCREEN_BOLD,
+    zapf_dingbats = ZAPF_DINGBATS,
+  };
+
+  Font(Font_type ff) : f(ff) { }
+  Font(int ff) : f(ff) { }
+
+  int as_int() const { return f; }
+
+private:
+  int f;
+};
+
+
+struct Circle : Shape {
+  Circle(Point p, int rr);
+
+  void draw_lines() const;
+
+  Point center() const;
+  int radius() const { return r; }
+  void set_radius(int rr) {
+    set_point(0, Point(center().x-rr, center().y-rr));
+    r = rr;
+  }
+
+private:
+  int r;
+};
+
+Circle::Circle(Point p, int rr)
+  : r(rr)
+{
+  add(Point(p.x-r, p.y-r));   // top left
+}
+
+Point Circle::center() const
+{
+  return Point(point(0).x+r, point(0).y+r);
+}
+
+void Circle::draw_lines() const
+{
+  if (color().visibility())
+    fl_arc(point(0).x, point(0).y, r+r, r+r, 0, 360);
+}
+
+
+struct Ellipse : Shape {
+  Ellipse(Point p, int w, int h);
+
+  void draw_lines() const;
+
+  Point center() const;
+  Point focus1() const;
+  Point focus2() const;
+
+  void set_major(int ww) {
+    set_point(0, Point(center().x-ww, center().y-h));
+    w = ww;
+  }
+  int major() const { return w; }
+  void set_minor(int hh) {
+    set_point(0, Point(center().x-w, center().y-hh));
+    h = hh;
+  }
+  int minor() const { return h; }
+
+private:
+  int w;
+  int h;
+};
+
+Point Ellipse::focus1() const
+{
+  return Point(center().x+sqrt(double(w*w-h*h)), center().y);
+}
+
+
+struct Marked_polyline : Open_polyline {
+  Marked_polyline(const string& m)
+    : mark(m)
+  { if (m=="") mark="*"; }
+
+  void draw_lines() const;
+
+private:
+  string mark;
+};
+
+void Marked_polyline::draw_lines() const
+{
+  Open_polyline::draw_lines();
+  for (int i=0; i<number_of_points(); ++i)
+    draw_mark(point(i), mark[i%mark.size()]);
+}
+
+void draw_mark(Point xy, char c)
+{
+  static const int dx = 4;
+  static const int dy = 4;
+
+  stirng m(1, c);  // string that has 1 character
+  fl_draw(m.c_str(), xy.x-dx, xy.y+dy);  // put a center of character to point
+}
+
+
+struct Marks : Marked_polyline {
+  Marks(const string& m)
+    : Marked_polyline(m)
+  {
+    set_color(Color(Color::invisible));
+  }
+};
+
+
+struct Mark : Marks {
+  Mark(Point xy, char c)
+    : Marks(string(1,c))
+  {
+    add(xy);
+  }
+};
+
+
+struct Image : Shape {
+  Image(Point xy, string file_name, Suffix::Encoding e = Suffix::none);
+  ~Image() { delete p; }
+  void draw_lines() const;
+  void set_mask(Point xy, int ww, int hh)
+  { w = ww; h = hh; cx = xy.x; cy = xy.y }
+
+private:
+  int w, h;  // define `masking-box` relative to (cx, cy)
+  int cx, cy;
+  Fl_Image* p;
+  Text fn;
+};
+
+struct Bad_image : Fl_Image {
+  Bad_image(int h, int w) : Fl_Image(h, w, 0) { }
+  void draw(int x, int y, int, int, int, int) { draw_empty(x, y); }
+};
+
+Image::Image(Point xy, string s, Suffix::Encoding e)
+  : w(0), h(0), fn(xy, "")
+{
+  add(xy);
+
+  if (!can_open(s)) {
+    fn.set_label("cannot open \"" + s + '"');
+    p = new Bad_image(30, 20);
+    return;
+  }
+
+  if (e == Suffix::none) e = get_encoding(s);
+
+  switch(e) {
+  case Suffix::jpg:
+    p = new Fl_JPEG_Image(s.c_str());
+    break;
+  case Suffix::gif:
+    p = new Fl_GIF_Image(s.c_str());
+    break;
+  default:
+    fn.set_label("unsupported file type \"" + s + '"');
+    p = new Bad_image(30, 20);
+    break;
+  }
+}
+
+bool can_open(const string& s)
+{
+  ifstream ff(s.c_str());
+  return (bool)ff;
+}
+
+
+// ************************************************************
+// chap 14
+
+class Shape {
+public:
+  void draw() const;
+  virtual void move(int dx, int dy);
+
+  void set_color(Color col);
+  Color color() const;
+
+  void set_style(Line_style sty);
+  Line_style style() const;
+
+  void set_fill_color(Color col);
+  Color fill_color() const;
+
+  Point point(int i) const;
+  int number_of_points() const;
+
+  virtual ~Shape() { }
+
+protected:
+  Shape();
+  virtual void draw_lines() const;
+  void add(Point p);
+  void set_point(int i, Point p);
+
+Private:
+  vector<Point> points;
+  Color lcolor;
+  Line_style ls;
+  Color fcolor;
+
+  Shape(const Shape&);
+  Shape& operator=(const Shape&);
+};
+
+Shape::Shape()
+  : lcolor(fl_color()), ls(0), fcolor(Color::invisible)
+{
+}
+
+void Shape::add(Point p)
+{
+  points.push_back(p);
+}
+
+void Shape::set_point(int i, Point p)
+{
+  points[i] = p;
+}
+
+Point Shape::point(int i) const
+{
+  return points[i];
+}
+
+int Shape::number_of_points() const
+{
+  return points.size();
+}
+
+void Shape::draw() const
+{
+  Fl_Color oldc = fl_color();
+  fl_color(lcolor.as_int());  // set color
+  fl_line_style(ls.style(), ls.width());  // set style
+  draw_lines();
+  fl_color(oldc);  // default color
+  fl_line_style(0);  // default line style
+}
+
+void Shape::move(int dx, int dy)
+{
+  for (int i=0; i<points.size(); ++i) {
+    points[i].x += dx;
+    points[i].y += dy;
+  }
+}
+
+
+// ************************************************************
+// chap 15
+
+struct Function : Shape {
+  Function(Fct f, double r1, double r2, Point orig,
+           int count = 100, double xscale = 25, double yscale = 25);
+};
+
+Function::Function(Fct f, double r1, double r2, Point xy,
+                   int count, double xscale, double yscale)
+{
+  if (r2-r1 <= 0) error("bad graphing range");
+  if (count <= 0) error("non-positive graphing count");
+  double dist = (r2 - r1) / count;
+  double r = r1;
+  for (int i=0; i<count; ++i) {
+    add(Point(xy.x + int(r*xscale), xy.y-int(f(r)*yscale)));
+    r += dist;
+  }
+}                   
+
+
+struct Axis : Shape {
+  enum Orientation { x, y, z };
+  Axis(Orientation d, Point xy, int length,
+       int number_of_notches=0, string label="");
+
+  void draw_lines() const;
+  void move(int dx, int dy);
+  void set_color(Color c);
+
+  Text label;
+  Lines notches;
+};
+
+Axis::Axis(Orientation d, Point xy, int length, int n, string lab)
+  : label(Point(0, 0), lab)
+{
+  if (length < 0) error("bad axis length");
+  switch (d) {
+  case Axis::x:
+    {
+      Shape::add(xy);
+      Shape::add(Point(xy.x+length, xy.y));
+
+      if (n > 0) {
+        int dist = length / n;
+        int x = xy.x + dist;
+        for (int i=0; i<n; ++i) {
+          notches.add(Point(x, xy.y), Point(x, xy.y-5));
+          x += dist;
+        }
+      }
+      label.move(length/3, xy.y+20);  // put label under axis
+      break;
+    }
+  case Axis::y:
+    {
+      Shape::add(xy);
+      Shape::add(Point(xy.x, xy.y-length));
+
+      if (n > 0) {
+        int dist = length / n;
+        int y = xy.y - dist;
+        for (int i=0; i<n; ++i) {
+          notches.add(Point(xy.x, y), Point(xy.x+5, y));
+          y -= dist;
+        }
+      }
+      label.move(xy.x-10, xy.y-length-10);
+      break;
+    }
+  case Axis::z:
+    error("z axis not implemented");
+  }
+}  
+
+void Axis::draw_lines() const
+{
+  Shape::draw_lines();
+  notches.draw();
+  label.draw();
+}
+
+void Axis::set_color(Color c)
+{
+  Shape::set_color(c);
+  notches.set_color(c);
+  lebale.set_color(c);
+}
+
+void Axis::move(int dx, int dy)
+{
+  Shape::move(dx, dy);
+  notches.move(dx, dy);
+  label.move(dx, dy);
+}
+
+// ************************************************************
+// chap 15
+
+struct Simple_window : Graph_lib::Window {
+  Simple_window(Point xy, int w, int h, const string& title);
+
+  void wait_for_button();
+
+private:
+  Button next_button;
+  bool button_pushed;
+
+  static void cb_next(Address, Address);
+  void next();  // action when next_button is pushed
+};
+
+Simple_window::Simple_window(Point xy, int w, int h, const string& title)
+  : Window(xy, w, h, title),
+    next_button(Point(x_max()-70, 0), 70, 20, "Next", cb_next),
+    button_pushed(false)
+{
+  attach(next_button);
+}
+
+void Simple_window::wait_for_button()
+{
+  while (!button_pushed) Fl::wait();
+  button_pushed = false;
+  Fl::redraw();
+}
+
+void Simple_window::next()
+{
+  button_pushed = true;
+}
+
+// callback
+static void cb_next(Address, Address);
+
+void Simple_window::cb_next(Address, Address pw)
+{
+  reference_to<Simple_window>(pw).next();
+}
+
+
+struct Button : Widget {
+  Button(Point xy, int w, int h, const string& label, Callback cb);
+  void attach(Window&);
+};
+
+
+class Widget {
+public:
+  Widget(Point xy, int w, int h, const string& s, Callback cb);
+
+  virtual void move(int dx, int dy);
+  virtual void hide();
+  virtual void show();
+  virtual void attach(Window&) = 0;
+
+  Point loc;
+  int width;
+  int height;
+  string label;
+  Callback do_it;
+
+protected:
+  Window* own;
+  Fl_Widget* pw;
+};
+
+
+class Button : public Widget {
+public:
+  Button(Point xy, int ww, int hh, const string& s, Callback cb)
+    : Widget(xy, ww, hh, s, cb) { }
+
+  void attach(Window& win);
+};
+
+
+struct In_box : Widget {
+  In_box(Point xy, int w, int h, const string& s)
+    : Widget(xy, w, h, s, 0) { }
+  int get_int();
+  string get_string();
+
+  void attach(Window& win);
+};
+
+struct Out_box : Widget {
+  Out_box(Point xy, int w, int h, const string& s)
+    : Widget(xy, w, h, s, 0) { }
+  void put(int);
+  void put(const string&);
+
+  void attach(Window& win);
+};
+
+
+struct Menu : Widget {
+  enum Kind { horizontal, vertical };
+  Menu(Point xy, int w, int h, Kind kk, const string& label);
+  Vector_ref<Button> selection;
+  Kind k;
+  int offset;
+  int attach(Button& b);
+  int attach(Button* p);
+
+  void show()
+  {
+    for (int i=0; i<selection.size(); ++i)
+      selection[i].show();
+  }
+  void hide();
+  void move(int dx, int dy);
+
+  void attach(Window& win);
+};
+
